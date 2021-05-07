@@ -17,6 +17,9 @@ public class TileController : MonoBehaviour
 
     private static readonly float moveDuration = 0.5f;
 
+    private static readonly Vector2[] adjacentDirection = new Vector2[] { Vector2.up, Vector2.down, Vector2.left, Vector2.right };
+    public bool IsDestroyed { get; set; }
+
     private void Awake()
     {
         board = BoardManager.Instance;
@@ -50,12 +53,21 @@ public class TileController : MonoBehaviour
             }
             else
             {
-                TileController otherTile = previousSelected;
-                SwapTile(otherTile, () =>
+                if (GetAllAdjacentTiles().Contains(previousSelected))
                 {
-                    SwapTile(otherTile);
-                });
+                    TileController otherTile = previousSelected;
+                    previousSelected.Deselect();
 
+                    SwapTile(otherTile, () =>
+                    {
+                        SwapTile(otherTile);
+                    });
+                }
+                else
+                {
+                    previousSelected.Deselect();
+                    Select();
+                }
             }
         }
     }
@@ -99,4 +111,92 @@ public class TileController : MonoBehaviour
         transform.position = targetPosition;
         onCompleted?.Invoke();
     }
+
+    #region Adjacent
+    private TileController GetAdjacent(Vector2 castDir)
+    {
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, castDir, render.size.x);
+
+        if (hit)
+        {
+            return hit.collider.GetComponent<TileController>();
+        }
+        return null;
+    }
+
+    public List<TileController> GetAllAdjacentTiles()
+    {
+        List<TileController> adjacentTiles = new List<TileController>();
+
+        for(int i = 0; i < adjacentDirection.Length; i++)
+        {
+            adjacentTiles.Add(GetAdjacent(adjacentDirection[i]));
+        }
+        return adjacentTiles;
+    }
+    #endregion
+
+    #region CheckMatch
+    private List<TileController> GetMatch(Vector2 castDir)
+    {
+        List<TileController> matchingTiles = new List<TileController>();
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, castDir, render.size.x);
+
+        while (hit)
+        {
+            TileController otherTile = hit.collider.GetComponent<TileController>();
+            if(otherTile.id != id || otherTile.IsDestroyed)
+            {
+                break;
+            }
+
+            matchingTiles.Add(otherTile);
+            hit = Physics2D.Raycast(otherTile.transform.position, castDir, render.size.x);
+        }
+        return matchingTiles;
+    }
+
+    private List<TileController> GetOneLineMatch(Vector2[] paths)
+    {
+        List<TileController> matchingTiles = new List<TileController>();
+
+        for(int i = 0; i < paths.Length; i++)
+        {
+            matchingTiles.AddRange(GetMatch[paths[i]]);
+        }
+
+        if (matchingTiles.Count >= 2)
+        {
+            return matchingTiles;
+        }
+        return null;
+    }
+
+    public List<TileController> GetAllMatches()
+    {
+        if (IsDestroyed)
+        {
+            return null;
+        }
+
+        List<TileController> matchingTiles = new List<TileController>();
+
+        List<TileController> horizontalMatchingTiles = GetOneLineMatch(new Vector2[2] { Vector2.up, Vector2.down });
+        List<TileController> verticalMatchingTiles = GetOneLineMatch(new Vector2[2] { Vector2.left, Vector2.right });
+
+        if (horizontalMatchingTiles != null)
+        {
+            matchingTiles.AddRange(horizontalMatchingTiles);
+        }
+        if (verticalMatchingTiles != null)
+        {
+            matchingTiles.AddRange(verticalMatchingTiles);
+        }
+        if (matchingTiles != null && matchingTiles.Count >= 2)
+        {
+            matchingTiles.Add(this);
+        }
+        return matchingTiles;
+    }
+    #endregion
 }
