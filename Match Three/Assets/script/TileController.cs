@@ -15,6 +15,8 @@ public class TileController : MonoBehaviour
     private static TileController previousSelected = null;
     private bool isSelected = false;
 
+    private static readonly float moveDuration = 0.5f;
+
     private void Awake()
     {
         board = BoardManager.Instance;
@@ -31,7 +33,7 @@ public class TileController : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (render.sprite == null)
+        if (render.sprite == null||board.IsAnimating)
         {
             return;
         }
@@ -44,14 +46,23 @@ public class TileController : MonoBehaviour
         {
             if (previousSelected == null)
             {
-                SelectionBaseAttribute();
+                Select();
             }
             else
             {
-                previousSelected.Deselect();
-                Select();
+                TileController otherTile = previousSelected;
+                SwapTile(otherTile, () =>
+                {
+                    SwapTile(otherTile);
+                });
+
             }
         }
+    }
+
+    public void SwapTile(TileController otherTile, System.Action onCompleted = null)
+    {
+        StartCoroutine(board.SwapTilePosition(this, otherTile, onCompleted));
     }
 
     #region Select & Deselect
@@ -68,7 +79,24 @@ public class TileController : MonoBehaviour
         render.color = normalColor;
         previousSelected = null;
     }
-
     #endregion
 
+    public IEnumerator MoveTilePosition(Vector2 targetPosition, System.Action onCompleted)
+    {
+        Vector2 startPosition = transform.position;
+        float time = 0.0f;
+
+        yield return new WaitForEndOfFrame();
+
+        while (time > moveDuration)
+        {
+            transform.position = Vector2.Lerp(startPosition, targetPosition, time / moveDuration);
+            time += Time.deltaTime;
+
+            yield return new WaitForEndOfFrame();
+        }
+
+        transform.position = targetPosition;
+        onCompleted?.Invoke();
+    }
 }
