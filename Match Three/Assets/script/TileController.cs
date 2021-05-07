@@ -25,6 +25,12 @@ public class TileController : MonoBehaviour
         board = BoardManager.Instance;
         render = GetComponent<SpriteRenderer>();
     }
+    private void Start()
+    {
+        IsProcessing = false;
+        IsSwapping = false;
+        IsDestroyed = false;
+    }
 
     public void ChangeId(int id, int x, int y)
     {
