@@ -60,7 +60,14 @@ public class TileController : MonoBehaviour
 
                     SwapTile(otherTile, () =>
                     {
+                        if (board.GetAllMatches().Count > 0)
+                        {
+                            Debug.Log("Match found");
+                        }
+                        else
+                        {
                         SwapTile(otherTile);
+                        }
                     });
                 }
                 else
@@ -162,7 +169,7 @@ public class TileController : MonoBehaviour
 
         for(int i = 0; i < paths.Length; i++)
         {
-            matchingTiles.AddRange(GetMatch[paths[i]]);
+            matchingTiles.AddRange(GetMatch(paths[i]));
         }
 
         if (matchingTiles.Count >= 2)
