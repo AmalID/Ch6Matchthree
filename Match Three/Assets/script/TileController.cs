@@ -16,19 +16,26 @@ public class TileController : MonoBehaviour
     private bool isSelected = false;
 
     private static readonly float moveDuration = 0.5f;
+    private static readonly float destroyBigDuration = 0.1f;
+    private static readonly float destroySmallDuration = 0.4f;
+
+    private static readonly Vector2 sizeBig = Vector2.one * 1.2f;
+    private static readonly Vector2 sizeSmall = Vector2.zero;
+    private static readonly Vector2 sizeNormal = Vector2.one;
 
     private static readonly Vector2[] adjacentDirection = new Vector2[] { Vector2.up, Vector2.down, Vector2.left, Vector2.right };
     public bool IsDestroyed { get; set; }
+
 
     private void Awake()
     {
         board = BoardManager.Instance;
         render = GetComponent<SpriteRenderer>();
     }
-    private void Start()
+    public void Start()
     {
-        IsProcessing = false;
-        IsSwapping = false;
+        board.IsProcessing = false;
+        board.IsSwapping = false;
         IsDestroyed = false;
     }
 
@@ -69,6 +76,7 @@ public class TileController : MonoBehaviour
                         if (board.GetAllMatches().Count > 0)
                         {
                             Debug.Log("Match found");
+                            board.Process();
                         }
                         else
                         {
@@ -97,7 +105,6 @@ public class TileController : MonoBehaviour
         render.color = selectedColor;
         previousSelected = this;
     }
-
     private void Deselect()
     {
         isSelected = false;
@@ -212,4 +219,44 @@ public class TileController : MonoBehaviour
         return matchingTiles;
     }
     #endregion
+    public IEnumerator SetDestroyed(System.Action onCompleted)
+    {
+        IsDestroyed = true;
+        id = -1;
+        name = "Tile_Null";
+
+        Vector2 startSize = transform.localScale;
+        float time = 0.0f;
+
+        while (time < destroyBigDuration)
+        {
+            transform.localScale = Vector2.Lerp(startSize, sizeBig, time / destroyBigDuration);
+            time += Time.deltaTime;
+
+            yield return new WaitForEndOfFrame();
+        }
+        transform.localScale = sizeBig;
+
+        startSize = transform.localScale;
+        time = 0.0f;
+
+        while (time < destroySmallDuration)
+        {
+            transform.localScale = Vector2.Lerp(startSize, sizeSmall, time / destroySmallDuration);
+            time += Time.deltaTime;
+
+            yield return new WaitForEndOfFrame();
+        }
+
+        transform.localScale = sizeSmall;
+        render.sprite = null;
+        onCompleted?.Invoke();
+    }
+    public void GenerateRandomTile(int x, int y)
+    {
+        transform.localScale = sizeNormal;
+        IsDestroyed = false;
+
+        ChangeId(Random.Range(0, board.tileTypes.Count), x, y);
+    }
 }
